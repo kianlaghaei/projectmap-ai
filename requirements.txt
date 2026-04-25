@@ -1,2 +1,3 @@
 # ProjectMap AI currently uses only Python standard library.
+PySide6
 pytest

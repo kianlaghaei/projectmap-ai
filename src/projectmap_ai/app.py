@@ -1,5 +1,5 @@
-from projectmap_ai.ui.tkinter_app import run_app
+from projectmap_ai.ui.qt_app import run_qt_app
 
 
 def main() -> None:
-    run_app()
+    run_qt_app()
