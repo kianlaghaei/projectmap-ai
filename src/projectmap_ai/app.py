@@ -1,6 +1,5 @@
-from projectmap_ai.ui.tkinter_app import ProjectMapAIApp
+from projectmap_ai.ui.tkinter_app import run_app
 
 
-def run_app():
-    app = ProjectMapAIApp()
-    app.run()
+def main() -> None:
+    run_app()

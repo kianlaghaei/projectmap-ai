@@ -1,264 +1,251 @@
-from pathlib import Path
+from __future__ import annotations
+
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from projectmap_ai.config import (
-    APP_NAME,
-    APP_VERSION,
-    DEFAULT_IGNORE_DIRS,
-    DEFAULT_IGNORE_FILES,
-)
+from projectmap_ai.config import DEFAULT_IGNORED_DIRS, DEFAULT_IGNORED_FILES, ScanConfig
+from projectmap_ai.core.json_exporter import export_json
 from projectmap_ai.core.scanner import scan_project
+from projectmap_ai.core.stats import calculate_stats
 from projectmap_ai.core.tree_builder import build_tree_text
-from projectmap_ai.core.json_exporter import build_json_text
-from projectmap_ai.core.stats import count_items
-from projectmap_ai.utils.path_utils import parse_comma_separated_items
 
 
-class ProjectMapAIApp:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.title(f"{APP_NAME} v{APP_VERSION}")
-        self.root.geometry("1000x700")
+class ProjectMapApp:
+    def __init__(self, root: tk.Tk) -> None:
+        self.root = root
+        self.root.title("ProjectMap AI")
+        self.root.geometry("1100x760")
+        self.root.minsize(900, 650)
 
         self.selected_path = tk.StringVar()
-        self.output_format = tk.StringVar(value="tree")
-
-        self.ignore_dirs = tk.StringVar(
-            value=", ".join(sorted(DEFAULT_IGNORE_DIRS))
-        )
-        self.ignore_files = tk.StringVar(
-            value=", ".join(sorted(DEFAULT_IGNORE_FILES))
-        )
+        self.format_var = tk.StringVar(value="both")
+        self.include_hidden_var = tk.BooleanVar(value=False)
+        self.follow_symlinks_var = tk.BooleanVar(value=False)
+        self.max_depth_var = tk.StringVar(value="")
+        self.stats_var = tk.StringVar(value="Ready")
 
         self._build_ui()
 
-    def run(self):
-        self.root.mainloop()
-
-    def _build_ui(self):
-        main_frame = ttk.Frame(self.root, padding=10)
+    def _build_ui(self) -> None:
+        main_frame = ttk.Frame(self.root, padding=12)
         main_frame.pack(fill="both", expand=True)
 
-        path_frame = ttk.LabelFrame(main_frame, text="Project Path", padding=10)
-        path_frame.pack(fill="x")
+        self._build_path_section(main_frame)
+        self._build_options_section(main_frame)
+        self._build_actions_section(main_frame)
+        self._build_output_section(main_frame)
+        self._build_status_section(main_frame)
 
-        path_input = ttk.Entry(path_frame, textvariable=self.selected_path)
-        path_input.pack(side="left", fill="x", expand=True, padx=(0, 8))
+    def _build_path_section(self, parent: ttk.Frame) -> None:
+        path_frame = ttk.LabelFrame(parent, text="Project Path", padding=10)
+        path_frame.pack(fill="x", pady=(0, 10))
 
-        browse_button = ttk.Button(
-            path_frame,
-            text="Browse",
-            command=self._browse_folder
+        entry = ttk.Entry(path_frame, textvariable=self.selected_path)
+        entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        browse_btn = ttk.Button(path_frame, text="Browse", command=self.browse_folder)
+        browse_btn.pack(side="left")
+
+    def _build_options_section(self, parent: ttk.Frame) -> None:
+        options_frame = ttk.LabelFrame(parent, text="Options", padding=10)
+        options_frame.pack(fill="x", pady=(0, 10))
+
+        left = ttk.Frame(options_frame)
+        left.pack(side="left", fill="both", expand=True, padx=(0, 12))
+
+        right = ttk.Frame(options_frame)
+        right.pack(side="left", fill="both", expand=True)
+
+        ttk.Label(left, text="Ignored Directories (comma-separated):").pack(anchor="w")
+        self.ignored_dirs_text = tk.Text(left, height=5, wrap="word")
+        self.ignored_dirs_text.pack(fill="x", expand=True, pady=(4, 8))
+        self.ignored_dirs_text.insert("1.0", ", ".join(sorted(DEFAULT_IGNORED_DIRS)))
+
+        ttk.Label(left, text="Ignored Files (comma-separated):").pack(anchor="w")
+        self.ignored_files_text = tk.Text(left, height=3, wrap="word")
+        self.ignored_files_text.pack(fill="x", expand=True, pady=(4, 0))
+        self.ignored_files_text.insert("1.0", ", ".join(sorted(DEFAULT_IGNORED_FILES)))
+
+        ttk.Label(right, text="Output Format:").pack(anchor="w")
+        format_combo = ttk.Combobox(
+            right,
+            textvariable=self.format_var,
+            values=["tree", "json", "both"],
+            state="readonly",
         )
-        browse_button.pack(side="left")
+        format_combo.pack(fill="x", pady=(4, 12))
+        format_combo.current(2)
 
-        options_frame = ttk.LabelFrame(main_frame, text="Options", padding=10)
-        options_frame.pack(fill="x", pady=10)
+        ttk.Checkbutton(
+            right,
+            text="Include hidden files/folders",
+            variable=self.include_hidden_var,
+        ).pack(anchor="w", pady=(0, 8))
 
-        ttk.Label(options_frame, text="Ignore Directories").pack(anchor="w")
-        ttk.Entry(options_frame, textvariable=self.ignore_dirs).pack(
-            fill="x",
-            pady=(0, 8)
-        )
+        ttk.Checkbutton(
+            right,
+            text="Follow symbolic links",
+            variable=self.follow_symlinks_var,
+        ).pack(anchor="w", pady=(0, 8))
 
-        ttk.Label(options_frame, text="Ignore Files").pack(anchor="w")
-        ttk.Entry(options_frame, textvariable=self.ignore_files).pack(
-            fill="x",
-            pady=(0, 8)
-        )
+        ttk.Label(right, text="Max Depth (optional):").pack(anchor="w")
+        ttk.Entry(right, textvariable=self.max_depth_var).pack(fill="x", pady=(4, 0))
 
-        format_frame = ttk.Frame(options_frame)
-        format_frame.pack(fill="x")
-
-        ttk.Label(format_frame, text="Output Format:").pack(
-            side="left",
-            padx=(0, 10)
-        )
-
-        ttk.Radiobutton(
-            format_frame,
-            text="Tree Text",
-            variable=self.output_format,
-            value="tree"
-        ).pack(side="left")
-
-        ttk.Radiobutton(
-            format_frame,
-            text="JSON",
-            variable=self.output_format,
-            value="json"
-        ).pack(side="left")
-
-        ttk.Radiobutton(
-            format_frame,
-            text="Both",
-            variable=self.output_format,
-            value="both"
-        ).pack(side="left")
-
-        actions_frame = ttk.Frame(main_frame)
+    def _build_actions_section(self, parent: ttk.Frame) -> None:
+        actions_frame = ttk.Frame(parent)
         actions_frame.pack(fill="x", pady=(0, 10))
 
-        ttk.Button(
-            actions_frame,
-            text="Scan Project",
-            command=self._scan_project
-        ).pack(side="left", padx=(0, 5))
+        ttk.Button(actions_frame, text="Generate Map", command=self.generate_output).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Button(actions_frame, text="Copy Output", command=self.copy_output).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Button(actions_frame, text="Save Output", command=self.save_output).pack(
+            side="left", padx=(0, 8)
+        )
+        ttk.Button(actions_frame, text="Clear", command=self.clear_output).pack(side="left")
 
-        ttk.Button(
-            actions_frame,
-            text="Copy Output",
-            command=self._copy_output
-        ).pack(side="left", padx=(0, 5))
-
-        ttk.Button(
-            actions_frame,
-            text="Save Output",
-            command=self._save_output
-        ).pack(side="left", padx=(0, 5))
-
-        ttk.Button(
-            actions_frame,
-            text="Clear",
-            command=self._clear_output
-        ).pack(side="left")
-
-        self.status_label = ttk.Label(main_frame, text="Ready")
-        self.status_label.pack(anchor="w", pady=(0, 5))
-
-        output_frame = ttk.Frame(main_frame)
+    def _build_output_section(self, parent: ttk.Frame) -> None:
+        output_frame = ttk.LabelFrame(parent, text="Output", padding=10)
         output_frame.pack(fill="both", expand=True)
 
-        self.output_text = tk.Text(
-            output_frame,
-            wrap="none",
-            font=("Consolas", 10)
-        )
+        self.output_text = tk.Text(output_frame, wrap="none", undo=True)
         self.output_text.pack(side="left", fill="both", expand=True)
 
-        scrollbar_y = ttk.Scrollbar(
-            output_frame,
-            orient="vertical",
-            command=self.output_text.yview
-        )
-        scrollbar_y.pack(side="right", fill="y")
+        y_scroll = ttk.Scrollbar(output_frame, orient="vertical", command=self.output_text.yview)
+        y_scroll.pack(side="right", fill="y")
+        self.output_text.configure(yscrollcommand=y_scroll.set)
 
-        self.output_text.configure(yscrollcommand=scrollbar_y.set)
+    def _build_status_section(self, parent: ttk.Frame) -> None:
+        status_frame = ttk.Frame(parent)
+        status_frame.pack(fill="x")
 
-    def _browse_folder(self):
-        folder = filedialog.askdirectory()
+        ttk.Label(status_frame, textvariable=self.stats_var).pack(anchor="w")
 
+    def browse_folder(self) -> None:
+        folder = filedialog.askdirectory(title="Select Project Folder")
         if folder:
             self.selected_path.set(folder)
 
-    def _scan_project(self):
-        path_value = self.selected_path.get().strip()
+    def _parse_csv_text(self, text_widget: tk.Text) -> set[str]:
+        raw = text_widget.get("1.0", "end").strip()
+        if not raw:
+            return set()
+        return {item.strip() for item in raw.split(",") if item.strip()}
 
-        if not path_value:
-            messagebox.showwarning("Warning", "Please select a project folder.")
+    def _parse_max_depth(self) -> int | None:
+        value = self.max_depth_var.get().strip()
+        if not value:
+            return None
+        try:
+            depth = int(value)
+            if depth < 0:
+                raise ValueError
+            return depth
+        except ValueError:
+            raise ValueError("Max Depth must be a non-negative integer.")
+
+    def generate_output(self) -> None:
+        path_str = self.selected_path.get().strip()
+        if not path_str:
+            messagebox.showwarning("Missing Path", "Please select a project folder.")
             return
 
-        root_path = Path(path_value)
-
-        if not root_path.exists() or not root_path.is_dir():
-            messagebox.showerror("Error", "Selected path is not a valid directory.")
+        path = Path(path_str)
+        if not path.exists() or not path.is_dir():
+            messagebox.showerror("Invalid Path", "The selected path is not a valid directory.")
             return
-
-        ignore_dirs = parse_comma_separated_items(self.ignore_dirs.get())
-        ignore_files = parse_comma_separated_items(self.ignore_files.get())
 
         try:
-            tree = scan_project(
-                root_path=root_path,
-                ignore_dirs=ignore_dirs,
-                ignore_files=ignore_files,
+            max_depth = self._parse_max_depth()
+            config = ScanConfig(
+                root_path=path,
+                ignored_dirs=self._parse_csv_text(self.ignored_dirs_text),
+                ignored_files=self._parse_csv_text(self.ignored_files_text),
+                include_hidden=self.include_hidden_var.get(),
+                max_depth=max_depth,
+                follow_symlinks=self.follow_symlinks_var.get(),
             )
 
-            tree_output = build_tree_text(tree)
-            json_output = build_json_text(tree)
+            tree = scan_project(config)
+            tree_text = build_tree_text(tree)
+            json_text = export_json(tree)
+            stats = calculate_stats(tree)
 
-            selected_format = self.output_format.get()
-
-            if selected_format == "tree":
-                output = tree_output
-            elif selected_format == "json":
-                output = json_output
+            fmt = self.format_var.get().strip().lower()
+            if fmt == "tree":
+                output = tree_text
+            elif fmt == "json":
+                output = json_text
             else:
-                output = (
-                    "===== TREE STRUCTURE =====\n"
-                    f"{tree_output}\n\n"
-                    "===== JSON STRUCTURE =====\n"
-                    f"{json_output}"
-                )
+                output = f"=== TREE ===\n{tree_text}\n\n=== JSON ===\n{json_text}"
 
-            self.output_text.delete("1.0", tk.END)
-            self.output_text.insert(tk.END, output)
+            self.output_text.delete("1.0", "end")
+            self.output_text.insert("1.0", output)
 
-            stats = count_items(tree)
-
-            self.status_label.config(
-                text=(
-                    "Scanned successfully | "
-                    f"Directories: {stats['directories']} | "
-                    f"Files: {stats['files']}"
-                )
+            self.stats_var.set(
+                f"Directories: {stats['directories']} | "
+                f"Files: {stats['files']} | "
+                f"Total Nodes: {stats['total_nodes']}"
             )
 
-        except Exception as error:
-            messagebox.showerror(
-                "Error",
-                f"Failed to scan project:\n{error}"
-            )
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc))
 
-    def _copy_output(self):
-        content = self.output_text.get("1.0", tk.END).strip()
-
+    def copy_output(self) -> None:
+        content = self.output_text.get("1.0", "end").strip()
         if not content:
-            messagebox.showinfo("Info", "Nothing to copy.")
+            messagebox.showinfo("No Content", "There is no output to copy.")
             return
 
         self.root.clipboard_clear()
         self.root.clipboard_append(content)
         self.root.update()
+        messagebox.showinfo("Copied", "Output copied to clipboard.")
 
-        messagebox.showinfo("Success", "Output copied to clipboard.")
-
-    def _save_output(self):
-        content = self.output_text.get("1.0", tk.END).strip()
-
+    def save_output(self) -> None:
+        content = self.output_text.get("1.0", "end").strip()
         if not content:
-            messagebox.showinfo("Info", "Nothing to save.")
+            messagebox.showinfo("No Content", "There is no output to save.")
             return
 
-        extension = ".json" if self.output_format.get() == "json" else ".txt"
-
         file_path = filedialog.asksaveasfilename(
-            defaultextension=extension,
+            title="Save Output",
+            defaultextension=".txt",
             filetypes=[
-                ("Text files", "*.txt"),
-                ("JSON files", "*.json"),
-                ("Markdown files", "*.md"),
-                ("All files", "*.*"),
+                ("Text Files", "*.txt"),
+                ("JSON Files", "*.json"),
+                ("All Files", "*.*"),
             ],
-            title="Save Output"
         )
-
         if not file_path:
             return
 
         try:
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(content)
+            Path(file_path).write_text(content, encoding="utf-8")
+            messagebox.showinfo("Saved", f"Output saved to:\n{file_path}")
+        except Exception as exc:
+            messagebox.showerror("Save Error", str(exc))
 
-            messagebox.showinfo("Success", "Output saved successfully.")
+    def clear_output(self) -> None:
+        self.output_text.delete("1.0", "end")
+        self.stats_var.set("Ready")
 
-        except Exception as error:
-            messagebox.showerror(
-                "Error",
-                f"Failed to save file:\n{error}"
-            )
 
-    def _clear_output(self):
-        self.output_text.delete("1.0", tk.END)
-        self.status_label.config(text="Ready")
+def run_app() -> None:
+    root = tk.Tk()
+    try:
+        root.iconbitmap(default="")
+    except Exception:
+        pass
+
+    style = ttk.Style()
+    try:
+        style.theme_use("clam")
+    except Exception:
+        pass
+
+    app = ProjectMapApp(root)
+    root.mainloop()

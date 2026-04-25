@@ -1,2 +1,2 @@
 # ProjectMap AI currently uses only Python standard library.
-# No external dependencies required.
+pytest
