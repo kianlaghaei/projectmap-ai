@@ -1,0 +1,20 @@
+[project]
+name = "projectmap-ai"
+version = "0.1.0"
+description = "A desktop tool to scan project folders and export clean project structure for AI analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Kian Laghaei" }
+]
+license = { text = "MIT" }
+
+[project.urls]
+Homepage = "https://github.com/YOUR_USERNAME/projectmap-ai"
+Repository = "https://github.com/YOUR_USERNAME/projectmap-ai"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
