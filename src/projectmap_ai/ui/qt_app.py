@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QFont, QIcon
+from PySide6.QtGui import QAction, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QPlainTextEdit,
+    QScrollArea,
     QSizePolicy,
     QSplitter,
     QStatusBar,
@@ -37,106 +38,124 @@ from projectmap_ai.core.tree_builder import build_tree_text
 
 DARK_STYLESHEET = """
 QWidget {
-    background-color: #0f1115;
-    color: #e6e6e6;
+    background-color: #0b0f14;
+    color: #edf2f7;
     font-size: 13px;
-    font-family: Segoe UI, Vazirmatn, Tahoma;
+    font-family: "Segoe UI", Vazirmatn, Tahoma, sans-serif;
 }
 
 QMainWindow {
-    background-color: #0f1115;
+    background-color: #0b0f14;
 }
 
 QFrame#Card {
-    background-color: #171a21;
-    border: 1px solid #262b36;
-    border-radius: 14px;
+    background-color: #141a22;
+    border: 1px solid #263141;
+    border-radius: 16px;
 }
 
 QLabel#Title {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
     color: #ffffff;
 }
 
 QLabel#Subtitle {
-    font-size: 12px;
-    color: #9aa4b2;
+    font-size: 13px;
+    color: #93a4b8;
+}
+
+QLabel#SectionTitle {
+    font-size: 16px;
+    font-weight: 800;
+    color: #7dd3fc;
 }
 
 QLineEdit, QComboBox, QPlainTextEdit {
-    background-color: #11151c;
-    border: 1px solid #2a3140;
+    background-color: #0f1621;
+    border: 1px solid #2b394d;
     border-radius: 10px;
-    padding: 8px 10px;
-    color: #f3f4f6;
-    selection-background-color: #2563eb;
+    padding: 9px 11px;
+    color: #f8fafc;
+    selection-background-color: #0ea5e9;
 }
 
 QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {
-    border: 1px solid #3b82f6;
+    border: 1px solid #38bdf8;
+    background-color: #0b1220;
 }
 
 QPushButton {
-    background-color: #1f2937;
-    border: 1px solid #313b4b;
+    background-color: #1b2635;
+    border: 1px solid #33445d;
     border-radius: 10px;
     padding: 10px 14px;
-    color: #f9fafb;
-    font-weight: 600;
+    color: #f8fafc;
+    font-weight: 700;
 }
 
 QPushButton:hover {
-    background-color: #273244;
+    background-color: #243449;
+    border-color: #4b6383;
 }
 
 QPushButton:pressed {
-    background-color: #1b2432;
+    background-color: #182234;
 }
 
 QPushButton#PrimaryButton {
-    background-color: #2563eb;
-    border: 1px solid #2563eb;
-    color: white;
+    background-color: #0f9f6e;
+    border: 1px solid #22c55e;
+    color: #ffffff;
 }
 
 QPushButton#PrimaryButton:hover {
-    background-color: #1d4ed8;
+    background-color: #12b981;
+}
+
+QPushButton#PrimaryButton:pressed {
+    background-color: #0d8f63;
 }
 
 QTabWidget::pane {
-    border: 1px solid #262b36;
+    border: 1px solid #263141;
     border-radius: 10px;
-    background: #11151c;
+    background: #0f1621;
     top: -1px;
 }
 
 QTabBar::tab {
-    background: #171a21;
-    color: #cbd5e1;
-    border: 1px solid #2a3140;
-    padding: 8px 14px;
+    background: #141a22;
+    color: #aec0d4;
+    border: 1px solid #2b394d;
+    padding: 9px 16px;
     margin-right: 4px;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
 }
 
 QTabBar::tab:selected {
-    background: #2563eb;
-    color: white;
+    background: #0f1621;
+    color: #7dd3fc;
+    border-bottom-color: #0f1621;
+}
+
+QTabBar::tab:hover:!selected {
+    background: #1b2635;
+    color: #f8fafc;
 }
 
 QToolBar {
-    background: #0f1115;
-    border: none;
-    spacing: 8px;
-    padding: 6px;
+    background: #0b0f14;
+    border-bottom: 1px solid #202b39;
+    spacing: 10px;
+    padding: 8px 10px;
 }
 
 QStatusBar {
-    background: #0d1015;
-    color: #94a3b8;
-    border-top: 1px solid #222834;
+    background: #0b0f14;
+    color: #93a4b8;
+    border-top: 1px solid #202b39;
 }
 
 QCheckBox {
@@ -144,15 +163,42 @@ QCheckBox {
 }
 
 QSplitter::handle {
-    background-color: #222834;
-    width: 2px;
+    background-color: #263141;
+    width: 4px;
+    border-radius: 2px;
+    margin: 0 4px;
+}
+
+QSplitter::handle:hover {
+    background-color: #38bdf8;
+}
+
+QScrollArea {
+    border: none;
+    background: transparent;
 }
 
 QComboBox QAbstractItemView {
-    background-color: #11151c;
-    color: #f3f4f6;
-    border: 1px solid #2a3140;
-    selection-background-color: #2563eb;
+    background-color: #0f1621;
+    color: #f8fafc;
+    border: 1px solid #2b394d;
+    selection-background-color: #0ea5e9;
+}
+
+QScrollBar:vertical {
+    background: #0b0f14;
+    width: 12px;
+}
+
+QScrollBar::handle:vertical {
+    background: #263141;
+    min-height: 28px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #38bdf8;
 }
 """
 
@@ -168,8 +214,7 @@ class ProjectMapMainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("ProjectMap AI")
-        self.resize(1400, 860)
-        self.setMinimumSize(1100, 700)
+        self.setMinimumSize(760, 520)
 
         self.tree_output = ""
         self.json_output = ""
@@ -178,6 +223,18 @@ class ProjectMapMainWindow(QMainWindow):
         self._build_ui()
         self._build_toolbar()
         self._build_statusbar()
+        self._fit_to_screen()
+
+    def _fit_to_screen(self) -> None:
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.resize(1200, 760)
+            return
+
+        available = screen.availableGeometry()
+        width = min(1400, max(760, int(available.width() * 0.86)))
+        height = min(900, max(520, int(available.height() * 0.86)))
+        self.resize(width, height)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -191,13 +248,23 @@ class ProjectMapMainWindow(QMainWindow):
         root_layout.addWidget(header)
 
         splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self._create_left_panel())
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(8)
+
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setMinimumWidth(320)
+        left_scroll.setMaximumWidth(520)
+        left_scroll.setWidget(self._create_left_panel())
+
+        splitter.addWidget(left_scroll)
         splitter.addWidget(self._create_right_panel())
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([420, 980])
+        splitter.setSizes([390, 900])
 
-        root_layout.addWidget(splitter)
+        root_layout.addWidget(splitter, 1)
 
     def _create_header(self) -> QWidget:
         card = Card()
@@ -210,6 +277,7 @@ class ProjectMapMainWindow(QMainWindow):
 
         subtitle = QLabel("Modern project structure explorer with Tree / JSON export")
         subtitle.setObjectName("Subtitle")
+        subtitle.setWordWrap(True)
 
         layout.addWidget(title)
         layout.addWidget(subtitle)
@@ -234,11 +302,11 @@ class ProjectMapMainWindow(QMainWindow):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        title = QLabel("Project Path")
-        title.setStyleSheet("font-size:16px;font-weight:700;")
+        title = self._section_title("Project Path")
 
         row = QHBoxLayout()
         self.path_input = QLineEdit()
+        self.path_input.setMinimumWidth(0)
         self.path_input.setPlaceholderText("Select project folder...")
         browse_btn = QPushButton("Browse")
         browse_btn.clicked.connect(self.browse_folder)
@@ -256,12 +324,13 @@ class ProjectMapMainWindow(QMainWindow):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        title = QLabel("Scan Options")
-        title.setStyleSheet("font-size:16px;font-weight:700;")
+        title = self._section_title("Scan Options")
         layout.addWidget(title)
 
         form = QFormLayout()
         form.setSpacing(10)
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        form.setRowWrapPolicy(QFormLayout.WrapLongRows)
 
         self.format_combo = QComboBox()
         self.format_combo.addItems(["tree", "json", "both"])
@@ -276,12 +345,12 @@ class ProjectMapMainWindow(QMainWindow):
         self.ignored_dirs_edit = QPlainTextEdit()
         self.ignored_dirs_edit.setPlaceholderText("Ignored directories, comma-separated")
         self.ignored_dirs_edit.setPlainText(", ".join(sorted(DEFAULT_IGNORED_DIRS)))
-        self.ignored_dirs_edit.setFixedHeight(90)
+        self.ignored_dirs_edit.setFixedHeight(92)
 
         self.ignored_files_edit = QPlainTextEdit()
         self.ignored_files_edit.setPlaceholderText("Ignored files, comma-separated")
         self.ignored_files_edit.setPlainText(", ".join(sorted(DEFAULT_IGNORED_FILES)))
-        self.ignored_files_edit.setFixedHeight(70)
+        self.ignored_files_edit.setFixedHeight(76)
 
         form.addRow("Output Format", self.format_combo)
         form.addRow("Max Depth", self.max_depth_input)
@@ -299,11 +368,11 @@ class ProjectMapMainWindow(QMainWindow):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        title = QLabel("Actions")
-        title.setStyleSheet("font-size:16px;font-weight:700;")
+        title = self._section_title("Actions")
 
         self.generate_btn = QPushButton("Generate Map")
         self.generate_btn.setObjectName("PrimaryButton")
+        self.generate_btn.setMinimumHeight(42)
         self.generate_btn.clicked.connect(self.generate_output)
 
         self.copy_btn = QPushButton("Copy Current Tab")
@@ -328,10 +397,11 @@ class ProjectMapMainWindow(QMainWindow):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        title = QLabel("Output")
-        title.setStyleSheet("font-size:16px;font-weight:700;")
+        header_layout = QHBoxLayout()
+        title = self._section_title("Output")
 
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
 
         self.tree_editor = self._create_output_editor()
         self.json_editor = self._create_output_editor()
@@ -342,13 +412,21 @@ class ProjectMapMainWindow(QMainWindow):
         self.tabs.addTab(self.combined_editor, "Combined")
 
         self.stats_label = QLabel("Ready")
-        self.stats_label.setStyleSheet("color:#94a3b8;font-size:12px;")
+        self.stats_label.setStyleSheet("color:#93a4b8;font-size:12px;")
+        self.stats_label.setWordWrap(True)
 
-        layout.addWidget(title)
+        header_layout.addWidget(title)
+        header_layout.addStretch(1)
+        layout.addLayout(header_layout)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.stats_label)
 
         return card
+
+    def _section_title(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("SectionTitle")
+        return label
 
     def _create_output_editor(self) -> QPlainTextEdit:
         editor = QPlainTextEdit()
@@ -363,6 +441,7 @@ class ProjectMapMainWindow(QMainWindow):
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Main Toolbar")
         toolbar.setMovable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.addToolBar(toolbar)
 
         generate_action = QAction("Generate", self)

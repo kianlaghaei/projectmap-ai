@@ -1,1 +1,1 @@
-__all__ = ["tkinter_app"]
+__all__ = ["qt_app"]
